@@ -13,6 +13,13 @@
     .clock-font {
       font-family: 'JetBrains Mono', monospace;
     }
+    /* contenteditable用プレースホルダーのスタイル */
+    [contenteditable]:empty:before {
+      content: attr(placeholder);
+      color: #64748b;
+      pointer-events: none;
+      display: block;
+    }
   </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col justify-center items-center p-4 relative overflow-x-hidden">
@@ -63,12 +70,25 @@
       </div>
     </div>
 
-    <!-- 下部の入力可能テキストエリア -->
+    <!-- 下部の入力可能エリア（太字・色変更対応） -->
     <div class="w-full bg-slate-800/50 backdrop-blur-md border border-slate-700/40 rounded-2xl p-6 shadow-lg text-left">
-      <label for="user-text" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-        メッセージ / メモ (自由に編集できます)
-      </label>
-      <textarea id="user-text" rows="3" class="w-full bg-slate-900/60 text-slate-100 text-base md:text-lg border border-slate-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y" placeholder="ここにテキストを入力してください..."></textarea>
+      <div class="flex justify-between items-center mb-2">
+        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          メッセージ / メモ (文字の太さや色を変更できます)
+        </label>
+        <!-- 編集ツールバー -->
+        <div class="flex items-center gap-2">
+          <!-- 太字ボタン -->
+          <button type="button" onclick="formatText('bold')" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 active:scale-95 rounded text-xs font-bold transition shadow" title="太字にする">B</button>
+          <!-- 文字色変更カラーピッカー -->
+          <div class="flex items-center gap-1 bg-slate-700 px-2 py-1 rounded shadow text-xs">
+            <span>色:</span>
+            <input type="color" id="text-color-picker" onchange="changeTextColor(this.value)" value="#ffffff" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0" title="文字色を変更">
+          </div>
+        </div>
+      </div>
+      <!-- リッチテキスト入力エリア -->
+      <div id="user-text" contenteditable="true" class="w-full min-h-[90px] bg-slate-900/60 text-slate-100 text-base md:text-lg border border-slate-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 overflow-y-auto" placeholder="ここにテキストを入力してください..."></div>
     </div>
 
     <!-- 曜日選択ボタンエリア -->
@@ -118,6 +138,18 @@
           document.exitFullscreen();
         }
       }
+    }
+
+    // テキスト装飾用関数（太字など）
+    function formatText(command) {
+      document.execCommand(command, false, null);
+      document.getElementById('user-text').focus();
+    }
+
+    // 文字色変更関数
+    function changeTextColor(color) {
+      document.execCommand('foreColor', false, color);
+      document.getElementById('user-text').focus();
     }
 
     // 曜日ごとの動画ファイル一覧
