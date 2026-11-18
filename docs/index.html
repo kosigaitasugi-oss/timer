@@ -17,6 +17,11 @@
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col justify-center items-center p-4 relative overflow-x-hidden">
 
+  <!-- 画面右上のフルスクリーン切り替えボタン -->
+  <button onclick="toggleFullScreen()" class="absolute top-4 right-4 z-20 px-3 py-2 bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md border border-slate-700/60 rounded-xl text-xs font-medium text-slate-300 transition shadow-lg flex items-center gap-1.5 active:scale-95">
+    <span>⛶</span> フルスクリーン
+  </button>
+
   <!-- 最前面の動画オーバーレイエリア（初期状態は非表示） -->
   <div id="video-overlay" class="fixed inset-0 z-50 bg-black/95 hidden flex-col justify-center items-center p-4 transition-opacity duration-300">
     <!-- 動画本体 -->
@@ -33,7 +38,7 @@
 
       <!-- 一時停止 / 再生 -->
       <button id="play-pause-btn" onclick="togglePlayPause()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-sm font-bold transition active:scale-95 flex items-center gap-1.5 min-w-[115px] justify-center">
-        <span>⏸️</span> 一時停止
+        <span>▶️</span> 再生
       </button>
 
       <!-- 終了（閉じる） -->
@@ -102,6 +107,19 @@
     setInterval(updateClock, 1000);
     updateClock();
 
+    // フルスクリーン切り替え関数
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.log("フルスクリーンエラー:", err);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
     // 曜日ごとの動画ファイル一覧
     const videoMap = {
       monday: 'monday.mp4',
@@ -116,7 +134,7 @@
     const source = document.getElementById('video-source');
     const playPauseBtn = document.getElementById('play-pause-btn');
 
-    // 動画を最前面で開いて再生する関数
+    // 動画を開く関数（再生はせず待機状態にする）
     function openVideo(day) {
       const videoUrl = videoMap[day];
       if (!videoUrl) return;
@@ -128,19 +146,19 @@
       overlay.classList.remove('hidden');
       overlay.classList.add('flex');
 
-      video.play().then(() => {
-        updatePlayPauseButton(true);
-      }).catch(err => {
-        console.log("再生エラー:", err);
-        updatePlayPauseButton(false);
-      });
+      // 再生はせず、一時停止（停止）状態で待機し、ボタンを「再生」表示にする
+      video.pause();
+      updatePlayPauseButton(false);
     }
 
     // 一時停止 / 再生を切り替える関数
     function togglePlayPause() {
       if (video.paused || video.ended) {
-        video.play();
-        updatePlayPauseButton(true);
+        video.play().then(() => {
+          updatePlayPauseButton(true);
+        }).catch(err => {
+          console.log("再生エラー:", err);
+        });
       } else {
         video.pause();
         updatePlayPauseButton(false);
@@ -169,7 +187,7 @@
       overlay.classList.remove('flex');
     }
 
-    // 動画が最後まで再生し終わった時の処理（ボタンを「再生」に戻す）
+    // 動画が最後まで再生し終わった時の処理
     video.addEventListener('ended', () => {
       updatePlayPauseButton(false);
     });
