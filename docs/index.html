@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>現在時刻とテキスト表示・動画切り替え</title>
+  <title>現在時刻・ストップウォッチとテキスト表示・動画切り替え</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
@@ -63,11 +63,43 @@
       ----年--月--日 (ー)
     </div>
 
-    <!-- 時刻表示（画面真ん中に大きく配置） -->
-    <div class="bg-slate-800/60 backdrop-blur-md border border-slate-700/50 rounded-3xl p-6 md:p-12 shadow-2xl w-full">
-      <div id="clock" class="clock-font text-5xl sm:text-7xl md:text-8xl font-bold tracking-tight text-white drop-shadow-md">
-        00:00:00
+    <!-- 時刻・ストップウォッチ切り替え表示エリア -->
+    <div class="bg-slate-800/60 backdrop-blur-md border border-slate-700/50 rounded-3xl p-6 md:p-10 shadow-2xl w-full flex flex-col items-center">
+      
+      <!-- モード切替タブ -->
+      <div class="inline-flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60 mb-6">
+        <button id="tab-clock" onclick="switchMode('clock')" class="px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold bg-indigo-600 text-white shadow transition-all">
+          🕒 現在時刻
+        </button>
+        <button id="tab-stopwatch" onclick="switchMode('stopwatch')" class="px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium text-slate-400 hover:text-white transition-all">
+          ⏱️ ストップウォッチ
+        </button>
       </div>
+
+      <!-- ① 現在時刻ビュー -->
+      <div id="clock-view" class="w-full py-2">
+        <div id="clock" class="clock-font text-5xl sm:text-7xl md:text-8xl font-bold tracking-tight text-white drop-shadow-md">
+          00:00:00
+        </div>
+      </div>
+
+      <!-- ② ストップウォッチビュー（初期状態は非表示） -->
+      <div id="stopwatch-view" class="w-full hidden flex-col items-center">
+        <div id="stopwatch-display" class="clock-font text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-white drop-shadow-md my-2">
+          00:00:00<span class="text-2xl sm:text-4xl text-indigo-400">.00</span>
+        </div>
+        
+        <!-- ストップウォッチ操作ボタン -->
+        <div class="mt-6 flex justify-center items-center gap-3 md:gap-4">
+          <button id="sw-start-btn" onclick="toggleStopwatch()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm md:text-base font-bold transition active:scale-95 shadow-lg min-w-[130px] flex items-center justify-center gap-1.5">
+            <span>▶️</span> スタート
+          </button>
+          <button onclick="resetStopwatch()" class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl text-sm md:text-base font-medium transition active:scale-95 shadow-lg flex items-center justify-center gap-1.5">
+            <span>🔄</span> リセット
+          </button>
+        </div>
+      </div>
+
     </div>
 
     <!-- 下部の入力可能エリア（太字・色変更対応） -->
@@ -106,7 +138,9 @@
   </main>
 
   <script>
-    // 時計を更新する関数
+    // ==========================================
+    // 1. 現在時刻の更新処理
+    // ==========================================
     function updateClock() {
       const now = new Date();
       const year = now.getFullYear();
@@ -123,11 +157,97 @@
       document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
     }
 
-    // 1秒ごとに時計を更新
     setInterval(updateClock, 1000);
     updateClock();
 
-    // フルスクリーン切り替え関数
+    // ==========================================
+    // 2. 時計 / ストップウォッチのモード切替
+    // ==========================================
+    function switchMode(mode) {
+      const clockView = document.getElementById('clock-view');
+      const swView = document.getElementById('stopwatch-view');
+      const tabClock = document.getElementById('tab-clock');
+      const tabSw = document.getElementById('tab-stopwatch');
+
+      if (mode === 'clock') {
+        clockView.classList.remove('hidden');
+        swView.classList.add('hidden');
+        swView.classList.remove('flex');
+
+        tabClock.className = 'px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold bg-indigo-600 text-white shadow transition-all';
+        tabSw.className = 'px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium text-slate-400 hover:text-white transition-all';
+      } else {
+        clockView.classList.add('hidden');
+        swView.classList.remove('hidden');
+        swView.classList.add('flex');
+
+        tabSw.className = 'px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold bg-indigo-600 text-white shadow transition-all';
+        tabClock.className = 'px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium text-slate-400 hover:text-white transition-all';
+      }
+    }
+
+    // ==========================================
+    // 3. ストップウォッチ機能
+    // ==========================================
+    let swInterval = null;
+    let swStartTime = 0;
+    let swElapsedTime = 0;
+    let swRunning = false;
+
+    function formatStopwatch(ms) {
+      const totalSeconds = Math.floor(ms / 1000);
+      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const seconds = String(totalSeconds % 60).padStart(2, '0');
+      const centiseconds = String(Math.floor((ms % 1000) / 10)).padStart(2, '0');
+
+      return `${hours}:${minutes}:${seconds}<span class="text-2xl sm:text-4xl text-indigo-400">.${centiseconds}</span>`;
+    }
+
+    function updateStopwatchDisplay() {
+      const currentElapsed = swRunning ? (Date.now() - swStartTime + swElapsedTime) : swElapsedTime;
+      document.getElementById('stopwatch-display').innerHTML = formatStopwatch(currentElapsed);
+    }
+
+    function toggleStopwatch() {
+      const startBtn = document.getElementById('sw-start-btn');
+
+      if (!swRunning) {
+        // スタート
+        swRunning = true;
+        swStartTime = Date.now();
+        swInterval = setInterval(updateStopwatchDisplay, 10);
+        startBtn.innerHTML = '<span>⏸️</span> ストップ';
+        startBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+        startBtn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+      } else {
+        // ストップ（一時停止）
+        swRunning = false;
+        clearInterval(swInterval);
+        swElapsedTime += Date.now() - swStartTime;
+        updateStopwatchDisplay();
+        startBtn.innerHTML = '<span>▶️</span> 再開';
+        startBtn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+        startBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+      }
+    }
+
+    function resetStopwatch() {
+      swRunning = false;
+      clearInterval(swInterval);
+      swElapsedTime = 0;
+      swStartTime = 0;
+      updateStopwatchDisplay();
+
+      const startBtn = document.getElementById('sw-start-btn');
+      startBtn.innerHTML = '<span>▶️</span> スタート';
+      startBtn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+      startBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+    }
+
+    // ==========================================
+    // 4. フルスクリーン・テキスト編集・動画オーバーレイ処理
+    // ==========================================
     function toggleFullScreen() {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(err => {
@@ -140,19 +260,16 @@
       }
     }
 
-    // テキスト装飾用関数（太字など）
     function formatText(command) {
       document.execCommand(command, false, null);
       document.getElementById('user-text').focus();
     }
 
-    // 文字色変更関数
     function changeTextColor(color) {
       document.execCommand('foreColor', false, color);
       document.getElementById('user-text').focus();
     }
 
-    // 曜日ごとの動画ファイル一覧
     const videoMap = {
       monday: 'monday.mp4',
       tuesday: 'tuesday.mp4',
@@ -166,7 +283,6 @@
     const source = document.getElementById('video-source');
     const playPauseBtn = document.getElementById('play-pause-btn');
 
-    // 動画を開く関数（再生はせず待機状態にする）
     function openVideo(day) {
       const videoUrl = videoMap[day];
       if (!videoUrl) return;
@@ -174,16 +290,13 @@
       source.src = videoUrl;
       video.load();
 
-      // オーバーレイを最前面に表示
       overlay.classList.remove('hidden');
       overlay.classList.add('flex');
 
-      // 再生はせず、一時停止（停止）状態で待機し、ボタンを「再生」表示にする
       video.pause();
       updatePlayPauseButton(false);
     }
 
-    // 一時停止 / 再生を切り替える関数
     function togglePlayPause() {
       if (video.paused || video.ended) {
         video.play().then(() => {
@@ -197,7 +310,6 @@
       }
     }
 
-    // ボタンの見た目を更新する関数
     function updatePlayPauseButton(isPlaying) {
       if (isPlaying) {
         playPauseBtn.innerHTML = '<span>⏸️</span> 一時停止';
@@ -206,12 +318,10 @@
       }
     }
 
-    // 10秒巻き戻す関数
     function rewindVideo() {
       video.currentTime = Math.max(0, video.currentTime - 10);
     }
 
-    // 動画を終了して時計画面に戻る関数
     function closeVideo() {
       video.pause();
       video.currentTime = 0;
@@ -219,12 +329,10 @@
       overlay.classList.remove('flex');
     }
 
-    // 動画が最後まで再生し終わった時の処理
     video.addEventListener('ended', () => {
       updatePlayPauseButton(false);
     });
 
-    // キーボードのEscキーでも終了できるようにする
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !overlay.classList.contains('hidden')) {
         closeVideo();
