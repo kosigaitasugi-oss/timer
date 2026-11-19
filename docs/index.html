@@ -720,4 +720,129 @@
       const startBtn = document.getElementById('sw-start-btn');
 
       if (!swRunning) {
-   
+        swRunning = true;
+        swStartTime = Date.now();
+        swInterval = setInterval(updateStopwatchDisplay, 10);
+        startBtn.innerHTML = '<span>⏸️</span> ストップ';
+        startBtn.classList.add('btn-warning');
+      } else {
+        swRunning = false;
+        clearInterval(swInterval);
+        swElapsedTime += Date.now() - swStartTime;
+        updateStopwatchDisplay();
+        startBtn.innerHTML = '<span>▶️</span> 再開';
+        startBtn.classList.remove('btn-warning');
+      }
+    }
+
+    function resetStopwatch() {
+      swRunning = false;
+      clearInterval(swInterval);
+      swElapsedTime = 0;
+      swStartTime = 0;
+      updateStopwatchDisplay();
+
+      const startBtn = document.getElementById('sw-start-btn');
+      startBtn.innerHTML = '<span>▶️</span> スタート';
+      startBtn.classList.remove('btn-warning');
+    }
+
+    // ==========================================
+    // 5. フルスクリーン・テキスト編集・動画オーバーレイ処理
+    // ==========================================
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.log("フルスクリーンエラー:", err);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    function formatText(command) {
+      document.execCommand(command, false, null);
+      document.getElementById('user-text').focus();
+    }
+
+    function changeTextColor(color) {
+      document.execCommand('foreColor', false, color);
+      document.getElementById('user-text').focus();
+    }
+
+    const videoMap = {
+      monday: 'monday.mp4',
+      tuesday: 'tuesday.mp4',
+      wednesday: 'wednesday.mp4',
+      thursday: 'thursday.mp4',
+      friday: 'friday.mp4'
+    };
+
+    const overlay = document.getElementById('video-overlay');
+    const video = document.getElementById('fg-video');
+    const source = document.getElementById('video-source');
+    const playPauseBtn = document.getElementById('play-pause-btn');
+
+    function openVideo(day) {
+      const videoUrl = videoMap[day];
+      if (!videoUrl) return;
+
+      source.src = videoUrl;
+      video.load();
+
+      overlay.classList.remove('hidden');
+
+      video.pause();
+      updatePlayPauseButton(false);
+    }
+
+    function togglePlayPause() {
+      if (video.paused || video.ended) {
+        video.play().then(() => {
+          updatePlayPauseButton(true);
+        }).catch(err => {
+          console.log("再生エラー:", err);
+        });
+      } else {
+        video.pause();
+        updatePlayPauseButton(false);
+      }
+    }
+
+    function updatePlayPauseButton(isPlaying) {
+      if (isPlaying) {
+        playPauseBtn.innerHTML = '<span>⏸️</span> 一時停止';
+      } else {
+        playPauseBtn.innerHTML = '<span>▶️</span> 再生';
+      }
+    }
+
+    function rewindVideo() {
+      video.currentTime = Math.max(0, video.currentTime - 10);
+    }
+
+    function closeVideo() {
+      video.pause();
+      video.currentTime = 0;
+      overlay.classList.add('hidden');
+    }
+
+    video.addEventListener('ended', () => {
+      updatePlayPauseButton(false);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!overlay.classList.contains('hidden')) {
+          closeVideo();
+        }
+        if (!document.getElementById('settings-modal').classList.contains('hidden')) {
+          closeSettings();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
